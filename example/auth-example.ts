@@ -3,6 +3,7 @@ import {
   createTypedRouter,
   type MiddlewareFactories,
   type RouteHandlers,
+  type Routes,
 } from "@mariozechner/routetype";
 import { Type } from "@sinclair/typebox";
 import express from "express";
@@ -66,7 +67,7 @@ const routes = {
       }),
     },
   },
-} as const;
+} as const satisfies Routes<AppMiddleware>;
 
 // Mock user database
 const users = new Map([
@@ -160,7 +161,7 @@ console.log(`Auth example server running at http://localhost:${port}`);
 
 // Example client usage
 async function clientExample() {
-  const client = createTypedClient<typeof routes>(`http://localhost:${port}`, {
+  const client = createTypedClient(routes, `http://localhost:${port}`, {
     headers: () => ({ Authorization: "Bearer token-123" }),
   });
 
@@ -180,7 +181,7 @@ async function clientExample() {
     console.log("\n3. Updated profile:", updated.user);
 
     // Test without auth token - should fail
-    const clientNoAuth = createTypedClient<typeof routes>(`http://localhost:${port}`);
+    const clientNoAuth = createTypedClient(routes, `http://localhost:${port}`);
     try {
       await clientNoAuth.get("/api/profile");
     } catch (error) {

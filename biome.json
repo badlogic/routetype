@@ -18,6 +18,6 @@
   "files": {
     "ignoreUnknown": false,
     "experimentalScannerIgnores": ["node_modules", "**/*.css", "dist"],
-    "includes": ["**/*.{ts}"]
+    "includes": ["src/*.{ts}", "example/*.{ts}"]
   }
 }

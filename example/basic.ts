@@ -117,7 +117,7 @@ const port = (server.address() as unknown as { port: string }).port;
 
 // Example client usage (in a separate file in real app)
 async function clientExample() {
-  const client = createTypedClient<typeof routes>(`http://localhost:${port}`);
+  const client = createTypedClient(routes, `http://localhost:${port}`);
 
   // TypeScript knows the exact input/output types
   const users = await client.get("/api/users", { limit: 5 });

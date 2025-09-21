@@ -17,8 +17,8 @@ type InputWithParams = { params: Record<string, unknown> };
 type InputWithQuery = { query: Record<string, unknown> };
 type InputWithBody = { body: unknown };
 
-// Client accepts any routes structure, doesn't care about middleware
-export class TypedClient<TRoutes extends Routes<Record<string, MiddlewareFactory<unknown, unknown>>>> {
+// biome-ignore lint/suspicious/noExplicitAny: Client accepts any routes structure, doesn't care about middleware
+export class TypedClient<TRoutes extends Routes<any>> {
   private baseUrl: string;
   private options: ClientOptions;
 
@@ -161,7 +161,9 @@ export class TypedClient<TRoutes extends Routes<Record<string, MiddlewareFactory
   }
 }
 
-export function createTypedClient<TRoutes extends Routes<Record<string, MiddlewareFactory<unknown, unknown>>>>(
+// biome-ignore lint/suspicious/noExplicitAny: Client accepts any routes structure, doesn't care about middleware
+export function createTypedClient<TRoutes extends Routes<any>>(
+  _routes: TRoutes,
   baseUrl = "",
   options: ClientOptions = {},
 ): TypedClient<TRoutes> {
