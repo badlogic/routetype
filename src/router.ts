@@ -1,184 +1,164 @@
-import express, { Router, Request, Response, NextFunction } from 'express'
-import { type TSchema } from '@sinclair/typebox'
-import { Value } from '@sinclair/typebox/value'
-import type {
-  Routes,
-  RouteHandlers,
-  MiddlewareFactories,
-  MiddlewareFactory,
-  RouteContext,
-  ExtractMiddlewareContext,
-  HttpMethod,
-  TypedRequest
-} from './types.js'
+import type { TSchema } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
+import { type NextFunction, type Request, type RequestHandler, type Response, Router } from "express";
+import type { MiddlewareFactories, RouteHandlers } from "./server-types.js";
+import type { HttpMethod, MiddlewareFactory, Routes } from "./shared-types.js";
 
-export interface RouterOptions<TMiddleware extends Record<string, MiddlewareFactory<any, any>>> {
-  middleware?: MiddlewareFactories<TMiddleware>
-  errorHandler?: (err: any, req: Request, res: Response, next: NextFunction) => void
-  basePath?: string
+export interface RouterOptions<TMiddleware extends Record<string, MiddlewareFactory<unknown, unknown>>> {
+  middleware?: MiddlewareFactories<TMiddleware>;
+  errorHandler?: (err: unknown, req: Request, res: Response, next: NextFunction) => void;
+  basePath?: string;
 }
 
 export function createTypedRouter<
   TRoutes extends Routes<TMiddleware>,
-  TMiddleware extends Record<string, MiddlewareFactory<any, any>> = Record<string, never>
->(
-  routes: TRoutes,
-  handlers: RouteHandlers<TRoutes, TMiddleware>,
-  options: RouterOptions<TMiddleware> = {}
-): Router {
-  const router = Router()
-  const { middleware: middlewareFactories, errorHandler, basePath = '' } = options
+  TMiddleware extends Record<string, MiddlewareFactory<unknown, unknown>> = Record<string, never>,
+>(routes: TRoutes, handlers: RouteHandlers<TRoutes, TMiddleware>, options: RouterOptions<TMiddleware> = {}): Router {
+  const router = Router();
+  const { middleware: middlewareFactories, errorHandler, basePath = "" } = options;
 
   for (const [path, methods] of Object.entries(routes)) {
     for (const [method, routeConfig] of Object.entries(methods)) {
-      if (!routeConfig) continue
+      if (!routeConfig) continue;
 
-      const fullPath = basePath + path
-      const httpMethod = method as HttpMethod
+      const fullPath = basePath + path;
+      const httpMethod = method as HttpMethod;
 
-      const middlewares: any[] = []
+      const middlewares: RequestHandler[] = [];
 
       // Add configured middleware
       if (routeConfig.middleware && middlewareFactories) {
         for (const [middlewareName, middlewareConfig] of Object.entries(routeConfig.middleware)) {
           if (middlewareConfig !== undefined && middlewareName in middlewareFactories) {
-            const factory = middlewareFactories[middlewareName as keyof typeof middlewareFactories]
-            middlewares.push(factory(middlewareConfig))
+            const factory = middlewareFactories[middlewareName as keyof typeof middlewareFactories];
+            middlewares.push(factory(middlewareConfig));
           }
         }
       }
 
       // Add validation and handler middleware
-      const validationMiddleware = createValidationMiddleware(routeConfig.input, routeConfig.output)
+      const validationMiddleware = createValidationMiddleware(routeConfig.input, routeConfig.output);
       const handlerMiddleware = createHandlerMiddleware(
         handlers[path]?.[httpMethod],
         routeConfig.input,
         routeConfig.output,
-        routeConfig.middleware || {}
-      )
+        routeConfig.middleware || {},
+      );
 
-      middlewares.push(validationMiddleware)
-      middlewares.push(handlerMiddleware)
+      middlewares.push(validationMiddleware);
+      middlewares.push(handlerMiddleware);
 
       // Register route
-      router[httpMethod](fullPath, ...middlewares)
+      router[httpMethod](fullPath, ...middlewares);
     }
   }
 
   // Add error handler if provided
   if (errorHandler) {
-    router.use(errorHandler)
+    router.use(errorHandler);
   }
 
-  return router
+  return router;
 }
 
-function createValidationMiddleware(
-  inputSchema: TSchema,
-  outputSchema: TSchema
-) {
+function createValidationMiddleware(inputSchema: TSchema, outputSchema: TSchema) {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       // Extract input from request
-      const input = extractInput(req)
+      const input = extractInput(req);
 
       // Validate input
       if (!Value.Check(inputSchema, input)) {
-        const errors = [...Value.Errors(inputSchema, input)]
+        const errors = [...Value.Errors(inputSchema, input)];
         return res.status(400).json({
-          error: 'Validation failed',
-          details: errors.map(e => ({
+          error: "Validation failed",
+          details: errors.map((e) => ({
             path: e.path,
-            message: e.message
-          }))
-        })
+            message: e.message,
+          })),
+        });
       }
-
       // Store validated input
-      (req as any).validatedInput = Value.Decode(inputSchema, input) as any
+      const extendedReq = req as Request & { validatedInput: unknown; outputSchema: TSchema };
+      extendedReq.validatedInput = Value.Decode(inputSchema, input);
 
       // Store output schema for response validation
-      (req as any).outputSchema = outputSchema
+      extendedReq.outputSchema = outputSchema;
 
-      next()
+      next();
     } catch (error) {
-      next(error)
+      next(error);
     }
-  }
+  };
 }
 
-function createHandlerMiddleware<TMiddleware extends Record<string, any>>(
-  handler: any,
-  inputSchema: TSchema,
+function createHandlerMiddleware<TMiddleware extends Record<string, unknown>>(
+  handler: unknown,
+  _inputSchema: TSchema,
   outputSchema: TSchema,
-  middlewareConfig: TMiddleware
+  _middlewareConfig: TMiddleware,
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!handler) {
-        return res.status(501).json({ error: 'Not implemented' })
+        return res.status(501).json({ error: "Not implemented" });
       }
 
       // Get validated input
-      const input = (req as any).validatedInput
+      const extendedReq = req as Request & {
+        validatedInput?: unknown;
+      };
+      const input = extendedReq.validatedInput;
 
-      // Build context from middleware
-      const context: RouteContext<any> = {
-        req,
-        res,
-        // Middleware should have added their data to req
-        ...(req as any).middlewareContext || {}
-      }
-
-      // Copy middleware-added properties
-      const middlewareProps = ['user', 'file', 'files', 'session', 'cookies']
-      for (const prop of middlewareProps) {
-        if ((req as any)[prop] !== undefined) {
-          context[prop] = (req as any)[prop]
-        }
-      }
+      // Pass req directly as context - it already has everything middleware added
+      const context = req as Request & Record<string, unknown>;
 
       // Call handler
-      const result = await handler(input, context)
+      if (typeof handler !== "function") {
+        return res.status(501).json({ error: "Handler not a function" });
+      }
+      const result = await (
+        handler as (input: unknown, context: Request & Record<string, unknown>) => Promise<unknown>
+      )(input, context);
 
       // Validate output
       if (!Value.Check(outputSchema, result)) {
-        console.error('Response validation failed:', [...Value.Errors(outputSchema, result)])
-        return res.status(500).json({ error: 'Internal server error' })
+        console.error("Response validation failed:", [...Value.Errors(outputSchema, result)]);
+        return res.status(500).json({ error: "Internal server error" });
       }
 
       // Send response
-      res.json(result)
+      res.json(result);
     } catch (error) {
-      next(error)
+      next(error);
     }
-  }
+  };
 }
 
-function extractInput(req: Request): any {
-  const input: any = {}
+function extractInput(req: Request): unknown {
+  const input: Record<string, unknown> = {};
 
   // Add params if present
   if (req.params && Object.keys(req.params).length > 0) {
-    input.params = req.params
+    input.params = req.params;
   }
 
   // Add query if present
   if (req.query && Object.keys(req.query).length > 0) {
-    input.query = req.query
+    input.query = req.query;
   }
 
   // Add body for methods that support it
-  if (['POST', 'PUT', 'PATCH'].includes(req.method!) && req.body) {
+  if (req.method && ["POST", "PUT", "PATCH"].includes(req.method) && req.body) {
     // If there are params or query, nest body under 'body' key
     if (input.params || input.query) {
-      input.body = req.body
+      input.body = req.body;
     } else {
       // Otherwise, body is the entire input
-      Object.assign(input, req.body)
+      Object.assign(input, req.body);
     }
   }
 
   // Return empty object if no input
-  return Object.keys(input).length > 0 ? input : {}
+  return Object.keys(input).length > 0 ? input : {};
 }

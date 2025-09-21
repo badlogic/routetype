@@ -1,5 +1,5 @@
 {
-  "name": "routetype",
+  "name": "@mariozechner/routetype",
   "version": "0.1.0",
   "description": "Type-safe, validated routing for Express with shared client-server types",
   "type": "module",
@@ -12,8 +12,8 @@
       "import": "./dist/index.js"
     },
     "./client": {
-      "types": "./dist/client.d.ts",
-      "import": "./dist/client.js"
+      "types": "./dist/client-exports.d.ts",
+      "import": "./dist/client-exports.js"
     }
   },
   "scripts": {
@@ -21,6 +21,7 @@
     "dev": "tsc --watch",
     "test": "node --test dist/**/*.test.js",
     "clean": "rm -rf dist",
+    "check": "biome check . --write && tsc --noEmit && cd example && npm run check",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
@@ -39,6 +40,7 @@
     "express": "^5.1.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
     "@sinclair/typebox": "^0.34.41",
     "@types/express": "^5.0.3",
     "@types/node": "^24.5.2",

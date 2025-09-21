@@ -4,12 +4,12 @@ Type-safe, validated routing for Express with shared client-server types. Define
 
 ## Features
 
-- 🔒 **Full type safety** - Share types between client and server
-- ✅ **Runtime validation** - Automatic request/response validation using TypeBox
-- 🚀 **Zero code generation** - No build step, just TypeScript
-- 🔌 **Extensible middleware** - Type-safe middleware with custom context
-- 📦 **Tiny footprint** - Minimal dependencies
-- 🎯 **Express compatible** - Works with your existing Express app
+- **Full type safety** - Share types between client and server
+- **Runtime validation** - Automatic request/response validation using TypeBox
+- **Zero code generation** - No build step, just TypeScript
+- **Extensible middleware** - Type-safe middleware with custom context
+- **Tiny footprint** - Minimal dependencies
+- **Express compatible** - Works with your existing Express app
 
 ## Installation
 
@@ -23,7 +23,7 @@ npm install routetype @sinclair/typebox express
 
 ```typescript
 // shared/routes.ts
-import { Type } from 'routetype'
+import { Type } from '@sinclair/typebox'
 
 export const routes = {
   '/api/users': {
@@ -245,7 +245,7 @@ routetype uses [TypeBox](https://github.com/sinclairzx81/typebox) for runtime va
 Common schema examples:
 
 ```typescript
-import { Type } from 'routetype'
+import { Type } from '@sinclair/typebox'
 
 // Basic types
 Type.String()

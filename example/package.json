@@ -1,0 +1,21 @@
+{
+  "name": "routetype-example",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start:basic": "tsx basic.ts",
+    "start:auth": "tsx auth-example.ts",
+    "check": "biome check . --write && tsc --noEmit"
+  },
+  "dependencies": {
+    "@mariozechner/routetype": "file:../",
+    "@sinclair/typebox": "^0.34.41",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.5.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.2"
+  }
+}
